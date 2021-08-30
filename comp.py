@@ -111,6 +111,36 @@ def run_model(model, duration=1000, v_init=-65, setup=None, temperature=305.15):
     return run_nrn(setup, model, duration, v_init, temperature), run_arb(setup, model, duration, v_init, temperature)
 
 if __name__ == "__main__":
+    """
+    CLI commands
+    ------------
+
+        python comp.py [model1] [model2]
+
+    Run the full `model1` and `model2`
+
+        python comp.py model1 mech_sweep
+
+    Repeat N `model1` runs incrementally inserting mechanisms, where N is the
+    total numbers of mechanisms.
+
+        python comp.py model1 skip:mech1
+
+    Run a mechanism sweep but skip all runs that don't insert `mech1`, consider
+    the following series:
+
+    mechA
+    mechA mechB
+    mechA mechB mechC
+
+        python comp.py model1 mech_sweep skip:mechB
+
+    would skip ahead past the first run introducing `mechB` to the `mechA mechB mech C` run
+
+        python comp.py model1 mech_sweep blocklist:mechA;mechB;mechC
+
+    Run a mechanism sweep, filtering out `mechA`, `mechB` and `mechC`
+    """
     models = {
         v: {"model": getattr(dbbs_models, v)}
         for v in sys.argv
