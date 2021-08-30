@@ -6,10 +6,14 @@ CLI commands
 
 Run the full `model1` and `model2`
 
+ ---
+
     python comp.py model1 mech_sweep
 
 Repeat N `model1` runs incrementally inserting mechanisms, where N is the
 total numbers of mechanisms.
+
+ ---
 
     python comp.py model1 skip:mech1
 
@@ -20,9 +24,13 @@ mechA
 mechA mechB
 mechA mechB mechC
 
+ ---
+
     python comp.py model1 mech_sweep skip:mechB
 
 would skip ahead past the first run introducing `mechB` to the `mechA mechB mech C` run
+
+ ---
 
     python comp.py model1 mech_sweep blocklist:mechA;mechB;mechC
 
