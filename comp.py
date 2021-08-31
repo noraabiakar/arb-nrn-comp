@@ -2,6 +2,7 @@ import dbbs_models as models
 import arbor, sys
 from patch import p
 import plotly.graph_objs as go
+import time
 
 class single_recipe(arbor.recipe):
     def __init__(self, cell, probes):
@@ -52,6 +53,8 @@ def run_nrn(setup, model, duration, v_init):
     neuron_cell = model()
     neuron_cell.record_soma()
     neuron_time = p.time
+    p.dt = 0.025
+    p.cvode.active(0)
     p.celsius = 32
     p.finitialize(-40)
     p.continuerun(1000)
@@ -68,7 +71,7 @@ def run_arb(setup, model, duration, v_init):
     domains = arbor.partition_load_balance(recipe, context)
     sim = arbor.simulation(recipe, domains, context)
     sim.record(arbor.spike_recording.all)
-    handle = sim.sample((0, 0), arbor.regular_schedule(0.1))
+    handle = sim.sample((0, 0), arbor.regular_schedule(0.025))
     sim.run(tfinal=duration)
 
     spikes = sim.spikes()
@@ -77,10 +80,32 @@ def run_arb(setup, model, duration, v_init):
 
 
 def run_single_model(model, duration=1000, v_init=-40):
-    return run_nrn(None, model, duration, v_init), run_arb(None, model, duration, v_init)
+    print("run_nrn")
+    start = time.time()
+    nrn_result = run_nrn(None, model, duration, v_init)
+    end = time.time()
+    print("time: ", end - start, "s")
+
+    print("run_arb")
+    start = time.time()
+    arb_result = run_arb(None, model, duration, v_init)
+    end = time.time()
+    print("time: ", end - start, "s")
+
+    return nrn_result, arb_result
+    #return run_nrn(None, model, duration, v_init), run_arb(None, model, duration, v_init)
 
 def run_model_setups(setups, model, duration=1000, v_init=-40):
-    return {k: (run_nrn(setup, model, duration, v_init), run_arb(setup, model, duration, v_init)) for k, setup in setups.items()}
+    result = {}
+    for k, setup in setups.items(): 
+        print("run_nrn")
+        nrn_result = run_nrn(setup, model, duration, v_init)
+        print("arb_nrn")
+        arb_result = run_arb(setup, model, duration, v_init)
+        print("done")
+        result[k] = (nrn_result, arb_result) 
+    return results
+    #return {k: (run_nrn(setup, model, duration, v_init), run_arb(setup, model, duration, v_init)) for k, setup in setups.items()}
 
 if __name__ == "__main__":
     setups = {
