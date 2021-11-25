@@ -5,21 +5,16 @@ import plotly.graph_objs as go
 import time
 
 class single_recipe(arbor.recipe):
-    def __init__(self, cell, probes):
+    def __init__(self, cell, probes, cat):
         # (4.1) The base C++ class constructor must be called first, to ensure that
         # all memory in the C++ class is initialized correctly.
         arbor.recipe.__init__(self)
         self.the_cell = cell
         self.the_probes = probes
         self.the_props = arbor.neuron_cable_properties()
-        self.the_props.set_property(Vm=-65, tempK=300, rL=35.4, cm=0.01)
-        self.the_props.set_ion(ion='na', int_con=10,   ext_con=140, rev_pot=50)
-        self.the_props.set_ion(ion='k',  int_con=54.4, ext_con=2.5, rev_pot=-77)
-        self.the_props.set_ion(ion='ca', int_con=0.0001, ext_con=2, rev_pot=132.5)
         self.the_props.set_ion(ion='h', valence=1, int_con=1.0, ext_con=1.0, rev_pot=-34)
 
-        self.the_cat = arbor.default_catalogue()
-        self.the_cat.extend(arbor.dbbs_catalogue(), "")
+        self.the_cat = cat
         self.the_props.register(self.the_cat)
 
     def num_cells(self):
@@ -52,11 +47,12 @@ def run_nrn(setup, model, duration, v_init):
         pass
     neuron_cell = model()
     neuron_cell.record_soma()
+    neuron_cell.soma[0].iclamp(x=0.5, delay=200, duration=400, amplitude=0.01)
     neuron_time = p.time
     p.dt = 0.025
     p.cvode.active(0)
     p.celsius = 32
-    p.finitialize(-40)
+    p.finitialize(v_init)
     p.continuerun(1000)
     return neuron_time, neuron_cell.Vm
 
@@ -64,9 +60,17 @@ def run_nrn(setup, model, duration, v_init):
 def run_arb(setup, model, duration, v_init):
     if setup is not None:
         pass
-    cell = model.cable_cell()
+
+    decor = arbor.decor()
+    decor.set_property(Vm=-65, tempK=300, rL=35.4, cm=0.01)
+    decor.set_ion(ion='na', int_con=10,   ext_con=140, rev_pot=50)
+    decor.set_ion(ion='k',  int_con=54.4, ext_con=2.5, rev_pot=-77)
+    decor.set_ion(ion='ca', int_con=0.0001, ext_con=2, rev_pot=132.5)
+    decor.place("(location 0 0.5)", arbor.iclamp(200, 400, current=0.01), 'iclamp0')
+
+    cell = model.cable_cell(decor=decor)
     probe = arbor.cable_probe_membrane_voltage('(proximal (tag 1))')
-    recipe = single_recipe(cell, [probe])
+    recipe = single_recipe(cell, [probe], model.get_catalogue())
     context = arbor.context()
     domains = arbor.partition_load_balance(recipe, context)
     sim = arbor.simulation(recipe, domains, context)
@@ -79,7 +83,7 @@ def run_arb(setup, model, duration, v_init):
     return data[:, 0], data[:, 1]
 
 
-def run_single_model(model, duration=1000, v_init=-40):
+def run_single_model(model, duration=1000, v_init=-65):
     print("run_nrn")
     start = time.time()
     nrn_result = run_nrn(None, model, duration, v_init)
